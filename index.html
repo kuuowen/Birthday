@@ -412,17 +412,10 @@
           <path id="arcTwTop"    d="M 51.2 74.9 A 250 250 0 0 1 268.8 74.9" fill="none"/>
           <path id="arcTwBottom" d="M 53.2 125.0 A 205 205 0 0 1 266.8 125.0" fill="none"/>
         </defs>
-        <text id="hl1" font-size="30" text-anchor="middle" xml:space="preserve">
-          <textPath href="#arcTwTop" startOffset="50%">
-            <tspan fill="#ff5050">祝</tspan><tspan fill="#ffff50"> 多益金色證書</tspan>
-          </textPath>
-        </text>
-        <!-- 第二行少一個空格，用 letter-spacing 補回來，讓兩行等寬 -->
-        <text id="hl2" font-size="30" text-anchor="middle" xml:space="preserve">
-          <textPath href="#arcTwBottom" startOffset="50%">
-            <tspan fill="#5050ff">研究所成功上岸</tspan>
-          </textPath>
-        </text>
+        <!-- textPath 裡不留換行縮排：xml:space="preserve" 會把它們算成空白，
+             也讓 JS 讀 textContent 時拿到乾淨的字串 -->
+        <text id="hl1" font-size="30" text-anchor="middle" xml:space="preserve"><textPath href="#arcTwTop" startOffset="50%"><tspan fill="#ff5050">祝</tspan><tspan fill="#ffff50"> 多益900分</tspan></textPath></text>
+        <text id="hl2" font-size="30" text-anchor="middle" xml:space="preserve"><textPath href="#arcTwBottom" startOffset="50%"><tspan fill="#5050ff">研究所成功上岸</tspan></textPath></text>
       </svg>
     </div>
     <div id="gift-gate">
@@ -672,19 +665,28 @@
       t.parentNode.removeChild(t);
       return L;
     }
+    // 直接讀 DOM 裡的文字，之後改字這段不用跟著改
+    var s1 = e1.textContent, s2 = e2.textContent;
     var p1 = a1.getTotalLength(), p2 = a2.getTotalLength();
-    var l1 = measure('祝 多益金色證書'), l2 = measure('研究所成功上岸');
+    var l1 = measure(s1), l2 = measure(s2);
     if (!l1 || !l2) return;
-    var fs = Math.min(BASE, BASE * Math.min(p1, p2) * 0.96 / l1);   // 留 4% 邊
-    var ls = (l1 - l2) / 7 * (fs / BASE);                            // 7 個字，補平寬度差
+    var wide = Math.max(l1, l2);
+    var fs = Math.min(BASE, BASE * Math.min(p1, p2) * 0.96 / wide);   // 留 4% 邊
+    // 撐開比較短的那一行去對齊長的那行。數字只有半個字寬，所以哪一行短會隨文字改變，
+    // 不能寫死；用負字距把長的擠短會很醜，一律只加不減。
+    var ls1 = 0, ls2 = 0;
+    if (l1 < l2)      ls1 = (l2 - l1) / s1.length * (fs / BASE);
+    else if (l2 < l1) ls2 = (l1 - l2) / s2.length * (fs / BASE);
     e1.setAttribute('font-size', fs.toFixed(2));
     e2.setAttribute('font-size', fs.toFixed(2));
-    e2.style.letterSpacing = ls.toFixed(3) + 'px';   // 屬性寫法 WebKit 不吃，要用 style
+    e1.style.letterSpacing = ls1 ? ls1.toFixed(3) + 'px' : '';   // 屬性寫法 WebKit 不吃，要用 style
+    e2.style.letterSpacing = ls2 ? ls2.toFixed(3) + 'px' : '';
     // letter-spacing 會在最後一字後也多加一份，置中會左偏半格，沿弧線往回補一點。
     // （WebKit 對含 textPath 的 <text> 回傳的 getBBox 不可靠，所以用算的，不用量的）
-    e1.querySelector('textPath').setAttribute('startOffset', '50%');
+    e1.querySelector('textPath')
+      .setAttribute('startOffset', (50 + (ls1 / 2) / p1 * 100).toFixed(3) + '%');
     e2.querySelector('textPath')
-      .setAttribute('startOffset', (50 + (ls / 2) / p2 * 100).toFixed(3) + '%');
+      .setAttribute('startOffset', (50 + (ls2 / 2) / p2 * 100).toFixed(3) + '%');
   }
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutHeadline);
   else window.addEventListener('load', layoutHeadline);
